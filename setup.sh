@@ -31,7 +31,6 @@ configfolder=/Users/$calling_user/.battery
 config_file=$configfolder/config_battery
 pidfile=$configfolder/battery.pid
 logfile=$configfolder/battery.log
-sleepwatcher_log=$configfolder/sleepwatcher.log
 
 # Ask for sudo once, in most systems this will cache the permissions for a bit
 sudo echo "🔋 Starting battery installation"
@@ -45,13 +44,13 @@ else
 fi
 
 # Note: github names zips by <reponame>-<branchname>.replace( '/', '-' )
-update_branch="2.0.21"
+update_branch="customized"
 in_zip_folder_name="BatteryOptimizer_for_MAC-$update_branch"
 batteryfolder="$tempfolder/battery"
 echo "[ 2 ] Downloading latest version of battery CLI"
 rm -rf $batteryfolder
 mkdir -p $batteryfolder
-curl -sSL -o $batteryfolder/repo.zip "https://github.com/js4jiang5/BatteryOptimizer_for_MAC/archive/refs/tags/v$update_branch.zip"
+curl -sSL -o $batteryfolder/repo.zip "https://github.com/iRalph/BatteryOptimizer_for_MAC/archive/refs/heads/$update_branch.zip"
 unzip -qq $batteryfolder/repo.zip -d $batteryfolder
 cp -r $batteryfolder/$in_zip_folder_name/* $batteryfolder
 rm $batteryfolder/repo.zip
@@ -126,110 +125,9 @@ write_config webhookid
 
 $binfolder/battery maintain 80 >/dev/null &
 
-if [[ $(smc -k BCLM -r) == *"no data"* ]]; then # sleepwatcher only required for Apple CPU Macbook
-	echo "[ 8 ] Setup for power limit when Macs shutdown"
-	sudo cp $batteryfolder/dist/.reboot $HOME/.reboot
-	sudo cp $batteryfolder/dist/.shutdown $HOME/.shutdown
-	sudo cp $batteryfolder/dist/shutdown.sh $binfolder/shutdown.sh
-	sudo cp $batteryfolder/dist/battery_shutdown.plist $HOME/Library/LaunchAgents/battery_shutdown.plist
-	launchctl enable "gui/$(id -u $USER)/com.battery_shutdown.app"
-	launchctl unload "$HOME/Library/LaunchAgents/battery_shutdown.plist" 2> /dev/null
-	launchctl load "$HOME/Library/LaunchAgents/battery_shutdown.plist" 2> /dev/null
-	sudo chown -R $calling_user $HOME/.reboot
-	sudo chmod 755 $HOME/.reboot
-	sudo chmod +x $HOME/.reboot
-	sudo chown -R $calling_user $HOME/.shutdown
-	sudo chmod 755 $HOME/.shutdown
-	sudo chmod +x $HOME/.shutdown
-	sudo chown -R $calling_user $binfolder/shutdown.sh
-	sudo chmod 755 $binfolder/shutdown.sh
-	sudo chmod +x $binfolder/shutdown.sh
-
-	# Install homebrew
-	if [[ -z $(which brew 2>&1) ]]; then
-		echo "[ 9 ] Install homebrew"
-		curl -s https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh | bash
-		if [[ -z $(which brew 2>&1) ]]; then
-			echo "Error: brew installation fail"
-			brew_installed=false
-		else
-			echo "brew installation completed"
-			brew_installed=true
-		fi
-	else
-		echo "[ 9 ] Homebrew installed"
-		brew_installed=true
-	fi
-
-	# Install sleepwatcher
-	if ! $brew_installed; then
-		sleepwatcher_installed=false
-	else
-		if [[ -z $(which sleepwatcher 2>&1) ]]; then
-			echo "[ 10 ] Install sleepwatcher"
-			HOMEBREW_NO_INSTALL_FROM_API=1 brew reinstall sleepwatcher
-			if [[ -z $(which sleepwatcher 2>&1) ]]; then
-				echo "Error: sleepwatcher installation fail"
-				sleepwatcher_installed=false
-			else
-				echo "sleepwatcher installation completed"
-				sleepwatcher_installed=true
-				brew services restart sleepwatcher
-			fi
-		else
-			echo "[ 10 ] Sleepwatcher installed"
-			sleepwatcher_installed=true
-		fi
-	fi
-
-	if $sleepwatcher_installed; then
-		echo "[ 11 ] Generate ~/.sleep and ~/.wakeup"
-		sudo cp $batteryfolder/dist/.sleep $HOME/.sleep
-		sudo cp $batteryfolder/dist/.wakeup $HOME/.wakeup
-		sudo chown -R $calling_user $HOME/.sleep
-		sudo chmod 755 $HOME/.sleep
-		sudo chmod +x $HOME/.sleep
-		sudo chown -R $calling_user $HOME/.wakeup
-		sudo chmod 755 $HOME/.wakeup
-		sudo chmod +x $HOME/.wakeup
-	fi
-fi
-
 # Remove tempfiles
 cd ../..
 echo "[ Final ] Removing temp folder $tempfolder"
 rm -rf $tempfolder
 
 #echo -e "\n🎉 Battery tool installed. Type \"battery help\" for instructions.\n"
-
-lang=$(defaults read -g AppleLocale)
-if [[ $lang =~ "zh_TW" ]]; then
-	is_TW=true
-else
-	is_TW=false
-fi
-
-empty="                                                                    "
-button_empty="${empty} Buy me a coffee ☕ ${empty}😀"
-button_empty_tw="${empty} 請我喝杯咖啡 ☕ ${empty}😀"
-notice="Installation completed.
-
-Please setup your MAC system settings as follows
-1.	system settings > notifications > enable \\\"Allow notifications when mirroring or sharing\\\"
-2.	system settings > notifications > applications > Script Editor > Choose \\\"Alerts\\\"
-"
-notice_tw="安裝完成.
-
-請調整 MAC 系統設定如下
-1.	系統設定 > 通知 > 開啟 \\\"在鏡像輸出或共享顯示器時允許通知\\\"
-2.	系統設定 > 通知 > 應用程式通知 > 工序指令編寫程式 > 選擇 \\\"提示\\\"
-"
-
-if $is_TW; then
-	answer="$(osascript -e 'display dialog "'"$notice_tw \n如果您覺得這個小工具對您有幫助,點擊下方按鈕請我喝杯咖啡吧"'" buttons {"'"$button_empty_tw"'", "完成"} default button 2 with icon note with title "BatteryOptimizer for MAC"' -e 'button returned of result')"
-else
-	answer="$(osascript -e 'display dialog "'"$notice \nIf you feel this tool is helpful, you may click the button below and buy me a coffee."'" buttons {"'"$button_empty"'", "Finish"} default button 2 with icon note with title "BatteryOptimizer for MAC"' -e 'button returned of result')"
-fi
-if [[ $answer =~ "coffee" ]] || [[ $answer =~ "咖啡" ]]; then
-    open https://buymeacoffee.com/js4jiang5
-fi
