@@ -1,4 +1,5 @@
-#!/bin/bash
+#!/usr/bin/env bash
+fork=borgius
 
 function write_config() { # write $val to $name in config_file
 	name=$1
@@ -51,7 +52,7 @@ batteryfolder="$tempfolder/battery"
 echo "[ 2 ] Downloading latest version of battery CLI"
 rm -rf $batteryfolder
 mkdir -p $batteryfolder
-curl -sSL -o $batteryfolder/repo.zip "https://github.com/js4jiang5/BatteryOptimizer_for_MAC/archive/refs/tags/v$update_branch.zip"
+curl -sSL -o $batteryfolder/repo.zip "https://github.com/$fork/BatteryOptimizer_for_MAC/archive/refs/tags/v$update_branch.zip"
 unzip -qq $batteryfolder/repo.zip -d $batteryfolder
 cp -r $batteryfolder/$in_zip_folder_name/* $batteryfolder
 rm $batteryfolder/repo.zip
